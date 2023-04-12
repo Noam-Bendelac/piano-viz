@@ -1,8 +1,17 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import logo from './logo.svg'
 import styles from './App.module.css'
+import { setupMidi } from 'midi/devices'
+
+
 
 function App() {
+  
+  useEffect(() => {
+    // console.log('setup')
+    setupMidi()
+  }, [])
+  
   return (
     <div className={styles.app}>
       <header className={styles.header}>
