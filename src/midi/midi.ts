@@ -1,3 +1,4 @@
+// import { realtimeNoteUpdate } from 'render/note'
 
 
 
@@ -26,7 +27,7 @@ export type MIDIMessage = MIDINoteOn | MIDINoteOff | MIDIPedal
 
 
 
-interface Note {
+export interface Note {
   pitch: number,
   velocity: number,
   startTime: number,
@@ -38,115 +39,126 @@ interface Note {
 }
 
 
+
 /**
- * Turns a sequence of note on and off messages into a sequence of Note objects
- * with start and end time.
- * Takes sustain and sostenuto pedals into consideration. Turns soft pedal into
- * lower velocity.
+ * Turns a sequence of note on, note off, and pedal messages into a sequence of
+ * Note objects/Note update callbacks with start and end time.
+ * Handles sustain and sostenuto pedals. Turns soft pedal into lower velocity.
  */
-function* buildNotes(): Generator<Note[], never, [MIDIMessage, number]> {
-  // initialize state
-  let t = 0
-  // sequence of performed notes
-  const notes: Note[] = []
-  // "map" of midi pitch (index 0 to 127) to that key's currently sounding Note
-  // instance, whether it's held down, and whether it's in the sostenuto set
-  const currentKeys = new Array<{
+class MessageHandler {
+  // mutable
+  public readonly notes: Note[] = []
+  
+  // state
+  // private t = 0
+  private readonly currentKeys = new Array<{
     note: Note,
     held: boolean,
     // sustain: boolean,
     sostenuto: boolean,
   } | null>(128).fill(null)
+  private sustain = false
+  private soft = false
   
-  let sustain = false
-  // let sostenuto = false
-  // const sostenutoSet = new Array<boolean>(128).fill(false)
-  let soft = false
+  // private onNoteChange: ((note: Note) => void) | null
   
-  // pull first message
-  let [message, deltaT]: [MIDIMessage, number] = yield notes
-  while (true) {
-    t += deltaT
+  // constructor(onNoteChange?: (note: Note) => void) {
+  //   this.onNoteChange = onNoteChange ?? null
+  // }
+  
+  onMessage(message: MIDIMessage, t: number, onNoteChange?: (note: Note) => void) {
+    // this.t += deltaT
     if (message.type === 'noteOn') {
       const note: Note = {
         pitch: message.pitch,
-        velocity: Math.ceil(message.velocity * (soft ? 0.8 : 1)),
+        velocity: Math.ceil(message.velocity * (this.soft ? 0.8 : 1)),
         startTime: t,
         endTime: null,
         startBeat: null,
       }
-      notes.push(note)
-      const existingKey = currentKeys[note.pitch]
+      this.notes.push(note)
+      const existingKey = this.currentKeys[note.pitch]
       if (existingKey) {
         // same key is already playing due to sustain/sostenuto (or a glitch)
         // end existing note
         existingKey.note.endTime = t
+        onNoteChange?.(existingKey.note)
       }
-      currentKeys[note.pitch] = {
+      this.currentKeys[note.pitch] = {
         note,
         held: true,
         sostenuto: existingKey?.sostenuto ?? false,
       }
+      onNoteChange?.(note)
+      
     } else if (message.type === 'noteOff') {
-      const key = currentKeys[message.pitch]
+      const key = this.currentKeys[message.pitch]
       if (key) {
         key.held = false
         
-        if (!(sustain || key.sostenuto)) {
+        if (!(this.sustain || key.sostenuto)) {
           // nothing sustaining note, so end it
           key.note.endTime = t
-          currentKeys[message.pitch] = null
+          onNoteChange?.(key.note)
+          this.currentKeys[message.pitch] = null
         }
       }
     } else {
+      
       if (message.pedal === 'sustain') {
-        sustain = message.value
-        if (!sustain) {
-          for (const key of currentKeys) {
+        this.sustain = message.value
+        if (!this.sustain) {
+          for (const key of this.currentKeys) {
             if (key && !(key.held || key.sostenuto)) {
               // end note
               key.note.endTime = t
+              onNoteChange?.(key.note)
             }
           }
         }
+        
       } else if (message.pedal === 'sostenuto') {
         // sostenuto = message.value
         if (message.value) {
-          currentKeys.forEach(key => { if (key) key.sostenuto = key.held })
+          this.currentKeys.forEach(key => { if (key) key.sostenuto = key.held })
         } else {
-          for (const key of currentKeys) {
+          for (const key of this.currentKeys) {
             if (key) {
               key.sostenuto = false
-              if (!(sustain || key.held)) {
+              if (!(this.sustain || key.held)) {
                 // nothing sustaining note, so end it
                 key.note.endTime = t
-                currentKeys[key.note.pitch] = null
+                onNoteChange?.(key.note)
+                this.currentKeys[key.note.pitch] = null
               }
             }
           }
         }
+        
       } else if (message.pedal === 'soft') {
-        soft = message.value
+        this.soft = message.value
       }
     }
-    
-    // push update and pull next message
-    [message, deltaT] = yield notes
   }
 }
 
 
 
-const realtimeNoteProcessor = buildNotes()
-realtimeNoteProcessor.next()
+
+// const realtimeNoteProcessor = buildNotes()
+const realtimeMessageHandler = new MessageHandler()//realtimeNoteUpdate)
+// realtimeNoteProcessor.next()
 const start = Date.now()
-export function onRealtimeMessage(m: Event) {
-  const msg = m as MIDIMessageEvent
+export const onRealtimeMessage = (onNoteUpdate: (note:Note) => void) =>
+(msg: MIDIMessageEvent) => {
+
+// export function onRealtimeMessage(msg: MIDIMessageEvent) {
+  // const msg = m as MIDIMessageEvent
   const message = parseMidiMessage(msg)
   console.log(message, msg)
   if (message === null) return;
-  const notes = realtimeNoteProcessor.next([message, Date.now() - start]).value
-  console.log(notes)
+  realtimeMessageHandler.onMessage(message, Date.now() - start, onNoteUpdate)
+  // console.log(notes)
   if (message.type === 'noteOn') {
     
   }

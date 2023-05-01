@@ -1,35 +1,67 @@
-import React, { useEffect } from 'react'
-import logo from './logo.svg'
-import styles from './App.module.css'
+import { useEffect, useMemo } from 'react'
 import { setupMidi } from 'midi/devices'
+import { Note, onRealtimeMessage } from 'midi/midi'
+import { Three } from 'render/three'
+
+
+// type Evt<D, T> = CustomEvent<D> & { type: T }
+export class EventChannel<T> {
+  
+  private eventTarget: EventTarget = new EventTarget()
+  
+  addEventListener(
+    // type: T,
+    callback: ((evt: CustomEvent<T>) => void) | null,
+    options?: boolean | AddEventListenerOptions | undefined
+  ): void {
+    this.eventTarget.addEventListener(
+      'event',
+      // (e) => { callback?.(e as CustomEvent<Note>) },
+      callback as (evt: Event) => void,
+      options
+    )
+  }
+  
+  removeEventListener(
+    // type: T,
+    callback: ((evt: CustomEvent<T>) => void) | null,
+    options?: boolean | EventListenerOptions | undefined
+  ): void {
+    this.eventTarget.removeEventListener(
+      'event', callback as (evt: Event) => void, options
+    )
+  }
+  
+  dispatchEvent(data: T): boolean {
+    return this.eventTarget.dispatchEvent(
+      new CustomEvent('event', { detail: data })
+    )
+  }
+}
+
+
 
 
 
 function App() {
   
+  const onNoteUpdate = useMemo(() => new EventChannel<Note>(), [])
+  
+  // onNoteUpdate.dispatchEvent({} as Note)
+  // const noteRenderer = useRef<{onNoteUpdate(note: Note):void}>(null)
+  
   useEffect(() => {
     // console.log('setup')
-    setupMidi()
+    setupMidi(onRealtimeMessage(onNoteUpdate.dispatchEvent))
   }, [])
   
-  return (
-    <div className={styles.app}>
-      <header className={styles.header}>
-        <img src={logo} className={styles.logo} alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className={styles.link}
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+  
+  
+  
+  return <>
+    <Three onNoteUpdate={onNoteUpdate} />
+    {/* <canvas ref={canvasRef}></canvas> */}
+  </>
 }
 
 export default App;

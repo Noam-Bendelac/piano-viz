@@ -4,7 +4,7 @@ import { onRealtimeMessage } from 'midi/midi'
 
 let midiAccess: MIDIAccess | null = null
 
-function onMidiReady(midiAccess: MIDIAccess) {
+function onMidiReady(midiAccess: MIDIAccess, onRealtimeMessage: (msg: MIDIMessageEvent) => void) {
   console.log('success', midiAccess);
   // setInterval(() => listInputsAndOutputs(midiAccess), 1000)
   listInputsAndOutputs(midiAccess)
@@ -17,7 +17,10 @@ function onMidiReady(midiAccess: MIDIAccess) {
     if (port.type === 'input') {
       const input = port as MIDIInput
       if (input.state === 'connected') {
-        input.onmidimessage = onRealtimeMessage
+        input.onmidimessage = evt => {
+          const m = evt as MIDIMessageEvent
+          onRealtimeMessage(m)
+        }
       } else {
         input.onmidimessage = null
       }
@@ -29,12 +32,12 @@ function onMidiReady(midiAccess: MIDIAccess) {
   }
 }
 
-export function setupMidi() {
+export function setupMidi(onRealtimeMessage: (msg: MIDIMessageEvent) => void) {
   navigator.requestMIDIAccess().then(
     (m) => {
       if (!midiAccess) {
         midiAccess = m
-        onMidiReady(midiAccess)
+        onMidiReady(midiAccess, onRealtimeMessage)
       }
     },
     (msg) => { alert(`failure, ${msg}`) });
