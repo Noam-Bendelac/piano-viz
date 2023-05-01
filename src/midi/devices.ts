@@ -1,10 +1,10 @@
-import { onRealtimeMessage } from 'midi/midi'
+import { MIDIMessage, parseMidiMessage } from 'midi/message';
 
 
 
 let midiAccess: MIDIAccess | null = null
 
-function onMidiReady(midiAccess: MIDIAccess, onRealtimeMessage: (msg: MIDIMessageEvent) => void) {
+function onMidiReady(midiAccess: MIDIAccess, onRealtimeMessage: (msg: MIDIMessage) => void) {
   console.log('success', midiAccess);
   // setInterval(() => listInputsAndOutputs(midiAccess), 1000)
   listInputsAndOutputs(midiAccess)
@@ -19,7 +19,11 @@ function onMidiReady(midiAccess: MIDIAccess, onRealtimeMessage: (msg: MIDIMessag
       if (input.state === 'connected') {
         input.onmidimessage = evt => {
           const m = evt as MIDIMessageEvent
-          onRealtimeMessage(m)
+          const msg = parseMidiMessage(m)
+          // console.log(m, msg)
+          if (msg) {
+            onRealtimeMessage(msg)
+          }
         }
       } else {
         input.onmidimessage = null
@@ -32,7 +36,14 @@ function onMidiReady(midiAccess: MIDIAccess, onRealtimeMessage: (msg: MIDIMessag
   }
 }
 
-export function setupMidi(onRealtimeMessage: (msg: MIDIMessageEvent) => void) {
+
+let init = false
+
+const keyboard = ['z', 's', 'x', 'd', 'c', 'v', 'g', 'b', 'h', 'n', 'j', 'm', ',']
+
+export function setupMidi(onRealtimeMessage: (msg: MIDIMessage) => void) {
+  if (init) return;
+  init = true
   navigator.requestMIDIAccess().then(
     (m) => {
       if (!midiAccess) {
@@ -40,7 +51,30 @@ export function setupMidi(onRealtimeMessage: (msg: MIDIMessageEvent) => void) {
         onMidiReady(midiAccess, onRealtimeMessage)
       }
     },
-    (msg) => { alert(`failure, ${msg}`) });
+    (msg) => { alert(`failure, ${msg}`) }
+  )
+  document.addEventListener('keydown', e => {
+    if (e.repeat) return;
+    const n = keyboard.findIndex(k => k === e.key)
+    if (n !== -1) {
+      const pitch = n + 60
+      onRealtimeMessage({
+        type: 'noteOn',
+        pitch,
+        velocity: 96,
+      })
+    }
+  })
+  document.addEventListener('keyup', e => {
+    const n = keyboard.findIndex(k => k === e.key)
+    if (n !== -1) {
+      const pitch = n + 60
+      onRealtimeMessage({
+        type: 'noteOff',
+        pitch,
+      })
+    }
+  })
 }
 
 

@@ -10,14 +10,9 @@ import { Camera, OrthographicCamera, Scene, Uniform, WebGLRenderer } from 'three
 export const nowTimeUniform = new Uniform(0)
 
 
-// function useFrame(callback: (t: number) => void) {
-//   const unique = useRef({})
-//   const ctx = useContext(RendererContext)
-//   ctx.set(unique.current, callback)
-// }
 
 
-function useFrame(callback: FrameCallback) {
+export function useFrame(callback: FrameCallback) {
   const ctx = useContext(RendererContext)
   useEffect(() => {
     ctx.add(callback)
@@ -73,6 +68,25 @@ export function Three({
 }) {
   const frameCallbacks = useMemo(() => new Set<FrameCallback>(), [])
   
+  
+  
+  return <RendererContext.Provider value={frameCallbacks}>
+    {/* <Renderer scene={scene} camera={camera} /> */}
+    <SceneContents onNoteUpdate={onNoteUpdate} />
+  </RendererContext.Provider>
+}
+
+
+
+
+
+
+export function SceneContents({
+  onNoteUpdate,
+}: {
+  onNoteUpdate: EventChannel<Note>,
+}) {
+  
   // const canvasRef = useRef<HTMLCanvasElement>(null)
   const scene = useMemo(() => new Scene(), [])
   const camera = useMemo(() => {
@@ -89,13 +103,9 @@ export function Three({
     nowTimeUniform.value = t
   }, []))
   
-  
-  return <RendererContext.Provider value={frameCallbacks}>
+  return <>
     <Renderer scene={scene} camera={camera} />
     <NoteRenderer onNoteUpdate={onNoteUpdate} scene={scene} />
-  </RendererContext.Provider>
+  </>
 }
-
-
-
 

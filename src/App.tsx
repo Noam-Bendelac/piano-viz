@@ -52,8 +52,8 @@ function App() {
   
   useEffect(() => {
     // console.log('setup')
-    setupMidi(onRealtimeMessage(onNoteUpdate.dispatchEvent))
-  }, [])
+    setupMidi(onRealtimeMessage(onNoteUpdate))
+  }, [onNoteUpdate])
   
   
   
