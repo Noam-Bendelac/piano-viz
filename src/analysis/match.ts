@@ -1,10 +1,12 @@
+import { PitchSet, Score } from 'data/Score'
+import { Note } from 'midi/MessageHandler'
 
 
 interface Cell {
   points: number,
   source: 'start' | 'matchNewChord' | 'matchCurrentChord' | 'insertion' | 'deletion',
   // immutable Set, can share reference
-  remainderScoreChord: ScoreChord,
+  remainderScoreChord: PitchSet,
 }
 
 // array of cells: one at the start represents insertions, and after that
@@ -15,15 +17,13 @@ type Column = Cell[]
 // there's one for every perf note
 type Matrix = Column[]
 
-// ScoreChord is immutable Set
-export type ScoreChord = Set<number> // pitches
-export type Score = ScoreChord[]
+
 export type Performance = number[] // pitches
 
 interface State {
   matrix: Matrix,
   score: Score,
-  // perf: Performance,
+  perf: Note[],
 }
 
 
@@ -42,11 +42,12 @@ const empty = new Set<number>()
 function construct<T>(t: T) { return t }
 
 
-export function beginRealtimeMatch(score: Score) {
+// performance: mutable array of notes
+export function beginRealtimeMatch(score: Score, performance: Note[]) {
   const state: State = {
     matrix: [],
     score: score,
-    // perf: [],
+    perf: performance,
   }
   // calculate first column; this represents the case that every score chord so
   // far has been a deletion
@@ -62,7 +63,7 @@ export function beginRealtimeMatch(score: Score) {
       source: 'deletion',
       remainderScoreChord: empty,
       // we know that the previous remainder chord is always empty
-      points: state.matrix[0][rowIdx - 1].points + (deletionPoints * sc.size)
+      points: state.matrix[0][rowIdx - 1].points + (deletionPoints * sc.pitches.size)
     }
   })
   return state
@@ -70,10 +71,18 @@ export function beginRealtimeMatch(score: Score) {
 /**
  * Match one new note that was played in real time
  */
-export function matchRealtimePerfToScore(state: State, pitch: number) {
-  state.matrix.push(new Array(state.score.length + 1))
-  const colIdx = state.matrix.length - 1
-  computeColumn(state, pitch, colIdx)
+export function matchRealtimePerfToScore(state: State/*, pitch: number*/) {
+  // matrix.length should be 1 + perf.length
+  // on new note, perf.length should be == matrix.length. check >= to be safe
+  if (state.perf.length >= state.matrix.length) {
+    const pitch = state.perf[state.perf.length - 1].pitch
+    state.matrix.push(new Array(state.score.length + 1))
+    const colIdx = state.matrix.length - 1
+    
+    const rowIdx = computeColumn(state, pitch, colIdx)
+    tracePath(state, rowIdx)
+    console.log(state.perf)
+  }
 }
 
 /**
@@ -81,12 +90,12 @@ export function matchRealtimePerfToScore(state: State, pitch: number) {
  */
 export function matchRecordedPerfToScore(
   score: Score,
-  performance: Performance,
+  performance: Note[],
 ) {
   const state: State = {
     matrix: new Array(performance.length),
     score: score,
-    // perf: performance,
+    perf: performance,
   }
   
   // calculate first column; this represents the case that every score chord so
@@ -103,14 +112,14 @@ export function matchRecordedPerfToScore(
       source: 'deletion',
       remainderScoreChord: empty,
       // we know that the previous remainder chord is always empty
-      points: state.matrix[0][rowIdx - 1].points + (deletionPoints * sc.size)
+      points: state.matrix[0][rowIdx - 1].points + (deletionPoints * sc.pitches.size)
     }
   })
   
   for (let perfIdx = 0; perfIdx < performance.length; perfIdx++) {
     const colIdx = perfIdx + 1
     state.matrix[colIdx] = new Array(score.length + 1)
-    computeColumn(state, performance[perfIdx], colIdx)
+    computeColumn(state, performance[perfIdx].pitch, colIdx)
   }
   
 }
@@ -132,6 +141,10 @@ function computeColumn(state: State, perfPitch: number, colIdx: number) {
     points: state.matrix[colIdx - 1][0].points + insertionPoints
   }
   
+  // keep track of best points
+  let bestRow = 0
+  let bestPoints = column[0].points
+  
   state.score.forEach((sc, scoreIdx) => {
     const rowIdx = scoreIdx + 1
     
@@ -148,13 +161,13 @@ function computeColumn(state: State, perfPitch: number, colIdx: number) {
       remainderScoreChord: empty,
       points: deletionSourceCell.points + (
         // we are skipping the remaining notes in current chord, and all notes in new chord
-        deletionPoints * (deletionSourceCell.remainderScoreChord.size + sc.size)
+        deletionPoints * (deletionSourceCell.remainderScoreChord.size + sc.pitches.size)
       ),
     }
     
     
     // check match new chord case
-    if (sc.has(perfPitch)) {
+    if (sc.pitches.has(perfPitch)) {
       // pitch is in chord; matching may or may not have highest points
       const points = newChordSourceCell.points + (
         // we're matching one new note, but also skipping remaining notes in current chord
@@ -165,7 +178,7 @@ function computeColumn(state: State, perfPitch: number, colIdx: number) {
         // matching new chord is a better option than current value of cell
         cell.source = 'matchNewChord'
         cell.points = points
-        const remainder = new Set(sc)
+        const remainder = new Set(sc.pitches)
         remainder.delete(perfPitch)
         cell.remainderScoreChord = remainder
       }
@@ -197,9 +210,41 @@ function computeColumn(state: State, perfPitch: number, colIdx: number) {
     }
     
     column[rowIdx] = cell
+    
+    if (cell.points > bestPoints) {
+      bestPoints = cell.points
+      bestRow = rowIdx
+    }
   })
-  // don't return column bc column already existed (make sure caller allocated)
-  // return column
+  
+  return bestRow
 }
 
+
+
+// set beatstamps on notes
+function tracePath(state: State, row: number) {
+  let col = state.matrix.length - 1
+  while (!(col === 0 && row === 0)) {
+    const note = state.perf[col - 1]
+    const source = state.matrix[col][row].source
+    
+    // if deletion, don't modify any beatstamp
+    
+    if (source === 'insertion') {
+      // if insertion, set beatstamp to null (could have been non-null in a past matching pass)
+      note.startBeat = null
+    } else if (source === 'matchCurrentChord' || source === 'matchNewChord') {
+      // if match, set beatstamp to current chord (same for either match case)
+      note.startBeat = state.score[row - 1].startBeat
+    }
+    
+    if (source === 'deletion' || source === 'matchNewChord') {
+      row--
+    }
+    if (source === 'insertion' || source === 'matchCurrentChord' || source === 'matchNewChord') {
+      col--
+    }
+  }
+}
 

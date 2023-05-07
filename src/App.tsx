@@ -1,7 +1,10 @@
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { setupMidi } from 'midi/devices'
-import { Note, onRealtimeMessage } from 'midi/midi'
+import { MessageHandler, Note } from 'midi/MessageHandler'
 import { Three } from 'render/three'
+import { MIDIMessage } from 'midi/message'
+import { beginRealtimeMatch, matchRealtimePerfToScore } from 'analysis/match'
+import { debugScore } from 'data/debugScore'
 
 
 // type Evt<D, T> = CustomEvent<D> & { type: T }
@@ -37,6 +40,14 @@ export class EventChannel<T> {
       new CustomEvent('event', { detail: data })
     )
   }
+  
+  useSubscribe(callback: (e: CustomEvent<T>) => void) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useEffect(() => {
+      this.addEventListener(callback)
+      return () => this.removeEventListener(callback)
+    }, [callback])
+  }
 }
 
 
@@ -45,21 +56,39 @@ export class EventChannel<T> {
 
 function App() {
   
-  const onNoteUpdate = useMemo(() => new EventChannel<Note>(), [])
+  const midiMessageEvents = useMemo(() => new EventChannel<MIDIMessage>(), [])
   
-  // onNoteUpdate.dispatchEvent({} as Note)
-  // const noteRenderer = useRef<{onNoteUpdate(note: Note):void}>(null)
+  // internally mutable
+  const [notes, setNotes] = useState<Note[]>([])
+  const noteUpdateEvents = useMemo(() => new EventChannel<Note>(), [])
+  // const newNoteEvents = useMemo(())
   
   useEffect(() => {
     // console.log('setup')
-    setupMidi(onRealtimeMessage(onNoteUpdate))
-  }, [onNoteUpdate])
+    setupMidi(midiMessageEvents)
+  }, [midiMessageEvents])
   
+  const messageHandler = useMemo(() => (
+    new MessageHandler(note => noteUpdateEvents.dispatchEvent(note))
+  ), [noteUpdateEvents])
+  useEffect(() => {
+    messageHandler.notes = notes
+  }, [messageHandler, notes])
+  midiMessageEvents.useSubscribe(useCallback(e => {
+    messageHandler.onMessage(e.detail, performance.now())
+  }, [messageHandler]))
+  
+  const realtimeScoreMatcher = useMemo(() => beginRealtimeMatch(debugScore, notes), [notes])
+  noteUpdateEvents.useSubscribe(useCallback(e => {
+    // this will read the mutated notes array and assign new beatstamps if necessary
+    matchRealtimePerfToScore(realtimeScoreMatcher)
+    // console.log(notes)
+  }, [realtimeScoreMatcher]))
   
   
   
   return <>
-    <Three onNoteUpdate={onNoteUpdate} />
+    <Three noteUpdateEvents={noteUpdateEvents} />
     {/* <canvas ref={canvasRef}></canvas> */}
   </>
 }

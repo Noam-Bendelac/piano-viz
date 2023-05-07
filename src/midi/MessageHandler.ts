@@ -32,9 +32,10 @@ export interface Note {
  * Note objects/Note update callbacks with start and end time.
  * Handles sustain and sostenuto pedals. Turns soft pedal into lower velocity.
  */
-class MessageHandler {
-  // mutable
-  public readonly notes: Note[] = []
+export class MessageHandler {
+  // owned by parent, reassignable if array ref needs to change.
+  // we will mutate this to update parent state
+  public notes: Note[] = []
   
   // state
   // private t = 0
@@ -47,13 +48,13 @@ class MessageHandler {
   private sustain = false
   private soft = false
   
-  // private onNoteChange: ((note: Note) => void) | null
+  private onNoteChange: ((note: Note) => void) | null
   
-  // constructor(onNoteChange?: (note: Note) => void) {
-  //   this.onNoteChange = onNoteChange ?? null
-  // }
+  constructor(onNoteChange?: (note: Note) => void) {
+    this.onNoteChange = onNoteChange ?? null
+  }
   
-  onMessage(message: MIDIMessage, t: number, onNoteChange?: (note: Note) => void) {
+  onMessage(message: MIDIMessage, t: number/*, onNoteChange?: (note: Note) => void*/) {
     // this.t += deltaT
     if (message.type === 'noteOn') {
       const note: Note = {
@@ -69,14 +70,14 @@ class MessageHandler {
         // same key is already playing due to sustain/sostenuto (or a glitch)
         // end existing note
         existingKey.note.endTime = t
-        onNoteChange?.(existingKey.note)
+        this.onNoteChange?.(existingKey.note)
       }
       this.currentKeys[note.pitch] = {
         note,
         held: true,
         sostenuto: existingKey?.sostenuto ?? false,
       }
-      onNoteChange?.(note)
+      this.onNoteChange?.(note)
       
     } else if (message.type === 'noteOff') {
       const key = this.currentKeys[message.pitch]
@@ -86,7 +87,7 @@ class MessageHandler {
         if (!(this.sustain || key.sostenuto)) {
           // nothing sustaining note, so end it
           key.note.endTime = t
-          onNoteChange?.(key.note)
+          this.onNoteChange?.(key.note)
           this.currentKeys[message.pitch] = null
         }
       }
@@ -99,7 +100,7 @@ class MessageHandler {
             if (key && !(key.held || key.sostenuto)) {
               // end note
               key.note.endTime = t
-              onNoteChange?.(key.note)
+              this.onNoteChange?.(key.note)
             }
           }
         }
@@ -115,7 +116,7 @@ class MessageHandler {
               if (!(this.sustain || key.held)) {
                 // nothing sustaining note, so end it
                 key.note.endTime = t
-                onNoteChange?.(key.note)
+                this.onNoteChange?.(key.note)
                 this.currentKeys[key.note.pitch] = null
               }
             }
@@ -132,22 +133,22 @@ class MessageHandler {
 
 
 
-const realtimeMessageHandler = new MessageHandler()//realtimeNoteUpdate)
-export const onRealtimeMessage =
-  (onNoteUpdate: EventChannel<Note>) =>
-  (message: MIDIMessage) =>
-{
+// const realtimeMessageHandler = new MessageHandler()//realtimeNoteUpdate)
+// export const onRealtimeMessage =
+//   (onNoteUpdate: EventChannel<Note>) =>
+//   (message: MIDIMessage) =>
+// {
 
-  realtimeMessageHandler.onMessage(
-    message,
-    performance.now(),
-    note => onNoteUpdate.dispatchEvent(note)
-  )
-  // console.log(notes)
-  if (message.type === 'noteOn') {
+//   realtimeMessageHandler.onMessage(
+//     message,
+//     performance.now(),
+//     note => onNoteUpdate.dispatchEvent(note)
+//   )
+//   // console.log(notes)
+//   if (message.type === 'noteOn') {
     
-  }
-}
+//   }
+// }
 
 
 

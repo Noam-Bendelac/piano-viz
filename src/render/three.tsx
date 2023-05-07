@@ -1,5 +1,5 @@
 import { EventChannel } from 'App'
-import { Note } from 'midi/midi'
+import { Note } from 'midi/MessageHandler'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef } from 'react'
 import { NoteRenderer } from 'render/note'
 import { Camera, OrthographicCamera, Scene, Uniform, WebGLRenderer } from 'three'
@@ -62,9 +62,9 @@ function Renderer({
 
 
 export function Three({
-  onNoteUpdate,
+  noteUpdateEvents,
 }: {
-  onNoteUpdate: EventChannel<Note>,
+  noteUpdateEvents: EventChannel<Note>,
 }) {
   const frameCallbacks = useMemo(() => new Set<FrameCallback>(), [])
   
@@ -72,7 +72,7 @@ export function Three({
   
   return <RendererContext.Provider value={frameCallbacks}>
     {/* <Renderer scene={scene} camera={camera} /> */}
-    <SceneContents onNoteUpdate={onNoteUpdate} />
+    <SceneContents noteUpdateEvents={noteUpdateEvents} />
   </RendererContext.Provider>
 }
 
@@ -82,9 +82,9 @@ export function Three({
 
 
 export function SceneContents({
-  onNoteUpdate,
+  noteUpdateEvents,
 }: {
-  onNoteUpdate: EventChannel<Note>,
+  noteUpdateEvents: EventChannel<Note>,
 }) {
   
   // const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -105,7 +105,7 @@ export function SceneContents({
   
   return <>
     <Renderer scene={scene} camera={camera} />
-    <NoteRenderer onNoteUpdate={onNoteUpdate} scene={scene} />
+    <NoteRenderer noteUpdateEvents={noteUpdateEvents} scene={scene} />
   </>
 }
 

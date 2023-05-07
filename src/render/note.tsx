@@ -1,5 +1,5 @@
 import { EventChannel } from 'App'
-import { Note } from 'midi/midi'
+import { Note } from 'midi/MessageHandler'
 import { useCallback, useEffect, useMemo } from 'react'
 import { nowTimeUniform } from 'render/three'
 import { BufferGeometry, Group, Material, Mesh, MeshBasicMaterial, PlaneGeometry, Scene, ShaderMaterial, Uniform } from 'three'
@@ -53,19 +53,14 @@ const noteMat = new ShaderMaterial({
 // const noteMap = new Map<Note, Mesh>()
 
 
-function useSubscribe<T>(channel: EventChannel<T>, callback: (e: CustomEvent<T>) => void) {
-  useEffect(() => {
-    channel.addEventListener(callback)
-    return () => channel.removeEventListener(callback)
-  }, [channel, callback])
-}
+
 
 
 export function NoteRenderer({
-  onNoteUpdate,
+  noteUpdateEvents,
   scene,
 }: {
-  onNoteUpdate: EventChannel<Note>,
+  noteUpdateEvents: EventChannel<Note>,
   scene: Scene,
 }) {
   const noteMap = useMemo(() => new Map<Note, Mesh<BufferGeometry, ShaderMaterial>>(), [])
@@ -75,7 +70,7 @@ export function NoteRenderer({
     return () => void scene.remove(noteGroup)
   }, [noteGroup, scene])
   
-  useSubscribe(onNoteUpdate, useCallback((e: CustomEvent<Note>) => {
+  noteUpdateEvents.useSubscribe(useCallback(e => {
     const note = e.detail
     console.log(note)
     let mesh = noteMap.get(note)

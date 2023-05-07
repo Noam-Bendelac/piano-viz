@@ -1,3 +1,4 @@
+import { EventChannel } from 'App';
 import { MIDIMessage, parseMidiMessage } from 'midi/message';
 
 
@@ -41,14 +42,15 @@ let init = false
 
 const keyboard = ['z', 's', 'x', 'd', 'c', 'v', 'g', 'b', 'h', 'n', 'j', 'm', ',']
 
-export function setupMidi(onRealtimeMessage: (msg: MIDIMessage) => void) {
+// export function setupMidi(onRealtimeMessage: (msg: MIDIMessage) => void) {
+export function setupMidi(onRealtimeMessage: EventChannel<MIDIMessage>) {
   if (init) return;
   init = true
   navigator.requestMIDIAccess().then(
     (m) => {
       if (!midiAccess) {
         midiAccess = m
-        onMidiReady(midiAccess, onRealtimeMessage)
+        onMidiReady(midiAccess, msg => onRealtimeMessage.dispatchEvent(msg))
       }
     },
     (msg) => { alert(`failure, ${msg}`) }
@@ -58,7 +60,7 @@ export function setupMidi(onRealtimeMessage: (msg: MIDIMessage) => void) {
     const n = keyboard.findIndex(k => k === e.key)
     if (n !== -1) {
       const pitch = n + 60
-      onRealtimeMessage({
+      onRealtimeMessage.dispatchEvent({
         type: 'noteOn',
         pitch,
         velocity: 96,
@@ -69,7 +71,7 @@ export function setupMidi(onRealtimeMessage: (msg: MIDIMessage) => void) {
     const n = keyboard.findIndex(k => k === e.key)
     if (n !== -1) {
       const pitch = n + 60
-      onRealtimeMessage({
+      onRealtimeMessage.dispatchEvent({
         type: 'noteOff',
         pitch,
       })
