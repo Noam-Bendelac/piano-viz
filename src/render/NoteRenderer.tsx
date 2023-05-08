@@ -33,14 +33,22 @@ const noteMat = new ShaderMaterial({
     gl_Position = clipPos;
   }`,
   fragmentShader: `
-  varying vec2 fragWorldPosition;
-  uniform float startTime;
-  uniform float velocity;
+    varying vec2 fragWorldPosition;
+    uniform float startTime;
+    uniform float velocity;
+    float sq(float x) {
+      return x*x;
+    }
     void main() {
-      float time = fragWorldPosition.x;
-      float deltaT = time - startTime;
-      float bright = (1.+velocity/127.)/2. * exp(-deltaT/2000.);
-      gl_FragColor = vec4(vec3(1,1,1)*bright, 1);
+      // float time = fragWorldPosition.x;
+      float t = fragWorldPosition.x - startTime;
+      
+      float vel = sq(1.4*mix(0.15, 1.0, velocity/127.));
+      float decay = exp(-t/2000.);
+      
+      float bright = min(vel, 1.0);
+      float alpha = min(decay * (vel / bright), 1.0);
+      gl_FragColor = vec4(vec3(0.83,1,1)*bright, alpha);
     }
   `,
   uniforms: {
@@ -48,7 +56,8 @@ const noteMat = new ShaderMaterial({
     velocity: { value: 0 },
     startTime: { value: 0 },
     playing: { value: false },
-  }
+  },
+  transparent: true,
 })
 
 // const noteMap = new Map<Note, Mesh>()

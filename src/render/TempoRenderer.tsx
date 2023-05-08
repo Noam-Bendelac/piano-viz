@@ -32,12 +32,12 @@ const tempoMat = new ShaderMaterial({
       for (int i = 0; i < ${tempoGpuData.length}; i++) {
         float t = worldPos.x - notes[i].time;
         float p = worldPos.y - notes[i].pitch;
-        sum += notes[i].dTempo * ((t < 0.) ? 0.5*exp(10.*t/1000.) : exp(-2.*t/1000.)) * exp(-0.008*p*p);
+        sum += notes[i].dTempo * ((t < 0.) ? 0.5*exp(10.*t/1000.) : exp(-2.*t/1000.)) * exp(-0.005*p*p);
       }
       // sum = notes[95].dTempo;
       // sum = worldPos.x/1000.;
-      vec3 hue = sum < 0. ? vec3(0.07,0,1) : vec3(1,0.07,0);
-      gl_FragColor = vec4(1.*hue*abs(sum), 1);
+      vec3 hue = sum < 0. ? vec3(0.1,0,1) : vec3(1,0.1,0);
+      gl_FragColor = vec4(2.*hue*abs(sum), 1);
     }
   `,
   uniforms: {
