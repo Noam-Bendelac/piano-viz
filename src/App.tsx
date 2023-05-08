@@ -6,6 +6,7 @@ import { MIDIMessage } from 'midi/message'
 import { beginRealtimeMatch, matchRealtimePerfToScore } from 'analysis/match'
 import { debugScore } from 'data/debugScore'
 import { calcTempo } from 'analysis/tempo'
+import { setupOutput } from 'midi/output'
 
 
 // type Evt<D, T> = CustomEvent<D> & { type: T }
@@ -90,6 +91,10 @@ function App() {
     }
     
   }, [realtimeScoreMatcher, notes]))
+  
+  useEffect(() => {
+    setupOutput(noteUpdateEvents)
+  }, [noteUpdateEvents])
   
   
   

@@ -35,10 +35,11 @@ const noteMat = new ShaderMaterial({
   fragmentShader: `
   varying vec2 fragWorldPosition;
   uniform float startTime;
+  uniform float velocity;
     void main() {
       float time = fragWorldPosition.x;
       float deltaT = time - startTime;
-      float bright = exp(-deltaT/2000.);
+      float bright = (1.+velocity/127.)/2. * exp(-deltaT/2000.);
       gl_FragColor = vec4(vec3(1,1,1)*bright, 1);
     }
   `,
