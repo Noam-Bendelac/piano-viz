@@ -4,7 +4,7 @@ import { MessageHandler, Note } from 'midi/MessageHandler'
 import { Three } from 'render/three'
 import { MIDIMessage } from 'midi/message'
 import { beginRealtimeMatch, matchRealtimePerfToScore } from 'analysis/match'
-import { debugScore } from 'data/debugScore'
+import { scores } from 'data/scores'
 import { calcTempo } from 'analysis/tempo'
 import { setupOutput } from 'midi/output'
 
@@ -82,7 +82,8 @@ function App() {
     messageHandler.onMessage(e.detail, performance.now())
   }, [messageHandler]))
   
-  const realtimeScoreMatcher = useMemo(() => beginRealtimeMatch(debugScore, notes), [notes])
+  const scoreIdx = Number.parseInt((new URLSearchParams(window.location.search)).get('score') ?? '0')
+  const realtimeScoreMatcher = useMemo(() => beginRealtimeMatch(scores[scoreIdx], notes), [notes, scoreIdx])
   noteUpdateEvents.useSubscribe(useCallback(e => {
     // this will read the mutated notes array and assign new beatstamps if necessary
     if (matchRealtimePerfToScore(realtimeScoreMatcher)) {

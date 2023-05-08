@@ -1,4 +1,5 @@
 import { Score, ScoreChord } from 'data/Score'
+import debussy from 'data/debussy.json'
 
 
 
@@ -24,6 +25,7 @@ const chord = (startBeat: number, ...pitches: number[]): ScoreChord => ({
   startBeat,
   pitches: new Set(pitches),
 })
+
 
 
 export const debugScore: Score = [
@@ -128,4 +130,25 @@ chord(25,71),
 chord(25.25,72),
 chord(25.5,74,76),
 ]
+
+
+
+function importScoreJson(json: string) {
+  return JSON.parse(json, (key, value) => {
+    if (key === 'pitches') {
+      return new Set(value)
+    } else {
+      return value
+    }
+  }) as Score
+}
+
+function importScore(s: { startBeat: number; pitches: number[]; }[]): Score {
+  return s.map(c => ({ startBeat: c.startBeat, pitches: new Set(c.pitches) }))
+}
+
+
+
+export const scores: Score[] = [debugScore, importScore(debussy)]
+
 
