@@ -42,6 +42,7 @@
     "@types/react": "^18.0.33",
     "@types/react-dom": "^18.0.11",
     "@types/three": "^0.150.1",
+    "@types/webmidi": "^2.0.7",
     "typescript": "^4.9.5"
   }
 }

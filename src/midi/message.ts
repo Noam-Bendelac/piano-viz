@@ -23,7 +23,7 @@ export type MIDIMessage = MIDINoteOn | MIDINoteOff | MIDIPedal
 /**
  * Parses binary midi into a MIDIMessage. Turns note on with velocity 0 into off
  */
-export function parseMidiMessage(msg: MIDIMessageEvent): MIDIMessage | null {
+export function parseMidiMessage(msg: WebMidi.MIDIMessageEvent): MIDIMessage | null {
   const status = msg.data[0]
   const code = status >> 4
   if (code === 0x8) {

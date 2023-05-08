@@ -3,34 +3,37 @@ import { MIDIMessage, parseMidiMessage } from 'midi/message';
 
 
 
-let midiAccess: MIDIAccess | null = null
+let midiAccess: WebMidi.MIDIAccess | null = null
 
-function onMidiReady(midiAccess: MIDIAccess, onRealtimeMessage: (msg: MIDIMessage) => void) {
+function onMidiReady(midiAccess: WebMidi.MIDIAccess, onRealtimeMessage: (msg: MIDIMessage) => void) {
   console.log('success', midiAccess);
   // setInterval(() => listInputsAndOutputs(midiAccess), 1000)
   listInputsAndOutputs(midiAccess)
+  
+  const messageHandler = (evt: Event) => {
+    const m = evt as WebMidi.MIDIMessageEvent
+    const msg = parseMidiMessage(m)
+    // console.log(m, msg)
+    if (msg) {
+      onRealtimeMessage(msg)
+    }
+  }
+  
   // TODO may have to set up message listener on existing ports
   // this may or may not work on existing ports:
   midiAccess.onstatechange = (e) => {
-    const evt = e as MIDIConnectionEvent
+    const evt = e as WebMidi.MIDIConnectionEvent
     console.log('port', evt.port)
     const port = evt.port
     if (port.type === 'input') {
-      const input = port as MIDIInput
+      const input = port as WebMidi.MIDIInput
       if (input.state === 'connected') {
-        input.onmidimessage = evt => {
-          const m = evt as MIDIMessageEvent
-          const msg = parseMidiMessage(m)
-          // console.log(m, msg)
-          if (msg) {
-            onRealtimeMessage(msg)
-          }
-        }
+        input.addEventListener('midimessage', messageHandler)
       } else {
-        input.onmidimessage = null
+        input.removeEventListener('midimessage', messageHandler)
       }
     } else {
-      const output = port as MIDIOutput
+      const output = port as WebMidi.MIDIOutput
       // TODO output music if playing prerecorded
     }
     
@@ -80,7 +83,7 @@ export function setupMidi(onRealtimeMessage: EventChannel<MIDIMessage>) {
 }
 
 
-function listInputsAndOutputs(midiAccess: MIDIAccess) {
+function listInputsAndOutputs(midiAccess: WebMidi.MIDIAccess) {
   for (const entry of midiAccess.inputs.entries()) {
     const input = entry[1];
     console.log(
