@@ -101,6 +101,7 @@ export class MessageHandler {
               // end note
               key.note.endTime = t
               this.onNoteChange?.(key.note)
+              this.currentKeys[key.note.pitch] = null
             }
           }
         }
