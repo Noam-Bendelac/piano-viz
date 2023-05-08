@@ -82,7 +82,9 @@ export function matchRealtimePerfToScore(state: State/*, pitch: number*/) {
     const rowIdx = computeColumn(state, pitch, colIdx)
     tracePath(state, rowIdx)
     console.log(state.perf)
+    return true
   }
+  return false
 }
 
 /**

@@ -1,7 +1,8 @@
 import { EventChannel } from 'App'
 import { Note } from 'midi/MessageHandler'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef } from 'react'
-import { NoteRenderer } from 'render/note'
+import { TempoRenderer } from 'render/TempoRenderer'
+import { NoteRenderer } from 'render/NoteRenderer'
 import { Camera, OrthographicCamera, Scene, Uniform, WebGLRenderer } from 'three'
 
 
@@ -106,6 +107,7 @@ export function SceneContents({
   return <>
     <Renderer scene={scene} camera={camera} />
     <NoteRenderer noteUpdateEvents={noteUpdateEvents} scene={scene} />
+    <TempoRenderer scene={scene} />
   </>
 }
 

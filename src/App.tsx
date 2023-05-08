@@ -5,6 +5,7 @@ import { Three } from 'render/three'
 import { MIDIMessage } from 'midi/message'
 import { beginRealtimeMatch, matchRealtimePerfToScore } from 'analysis/match'
 import { debugScore } from 'data/debugScore'
+import { calcTempo } from 'analysis/tempo'
 
 
 // type Evt<D, T> = CustomEvent<D> & { type: T }
@@ -63,6 +64,8 @@ function App() {
   const noteUpdateEvents = useMemo(() => new EventChannel<Note>(), [])
   // const newNoteEvents = useMemo(())
   
+  // const beatUpdateEvents = useMemo(() => new EventChannel<void>(), [])
+  
   useEffect(() => {
     // console.log('setup')
     setupMidi(midiMessageEvents)
@@ -81,9 +84,12 @@ function App() {
   const realtimeScoreMatcher = useMemo(() => beginRealtimeMatch(debugScore, notes), [notes])
   noteUpdateEvents.useSubscribe(useCallback(e => {
     // this will read the mutated notes array and assign new beatstamps if necessary
-    matchRealtimePerfToScore(realtimeScoreMatcher)
-    // console.log(notes)
-  }, [realtimeScoreMatcher]))
+    if (matchRealtimePerfToScore(realtimeScoreMatcher)) {
+      // true if updates
+      calcTempo(notes)
+    }
+    
+  }, [realtimeScoreMatcher, notes]))
   
   
   
