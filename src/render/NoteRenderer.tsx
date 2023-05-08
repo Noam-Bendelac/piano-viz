@@ -43,7 +43,7 @@ const noteMat = new ShaderMaterial({
       // float time = fragWorldPosition.x;
       float t = fragWorldPosition.x - startTime;
       
-      float vel = sq(1.4*mix(0.15, 1.0, velocity/127.));
+      float vel = sq(1.4*mix(0.2, 1.0, velocity/127.));
       float decay = exp(-t/2000.);
       
       float bright = min(vel, 1.0);

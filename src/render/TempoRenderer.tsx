@@ -37,7 +37,7 @@ const tempoMat = new ShaderMaterial({
       // sum = notes[95].dTempo;
       // sum = worldPos.x/1000.;
       vec3 hue = sum < 0. ? vec3(0.1,0,1) : vec3(1,0.1,0);
-      gl_FragColor = vec4(2.*hue*abs(sum), 1);
+      gl_FragColor = vec4(hue*min(1.3*abs(sum), 1.0), 1);
     }
   `,
   uniforms: {
